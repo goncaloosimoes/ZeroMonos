@@ -4,8 +4,10 @@ import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Duration;
 import java.util.List;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,126 +29,125 @@ import tqs.zeromonos.data.MunicipalityRepository;
 @DisplayName("Testes de Carga de Municípios da API Externa")
 class MunicipalityApiLoadTest {
 
-    @LocalServerPort
-    private int port;
+        @LocalServerPort
+        private int port;
 
-    @Autowired
-    private MunicipalityRepository municipalityRepository;
+        @Autowired
+        private MunicipalityRepository municipalityRepository;
 
-    private String baseUrl;
+        private String baseUrl;
 
-    private static final int EXPECTED_MUNICIPALITIES_COUNT = 308;
+        private static final int EXPECTED_MUNICIPALITIES_COUNT = 308;
 
-    @BeforeEach
-    void setUp() {
-        baseUrl = "http://localhost:" + port;
-        RestAssured.baseURI = baseUrl;
-        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-    }
-
-    @Test
-    @DisplayName("Verificar que a API externa carregou exatamente 308 municípios no repositório")
-    void testExternalApiLoaded308Municipalities() {
-        // Aguardar um pouco para garantir que o ApplicationRunner executou
-        try {
-            Thread.sleep(2000); // 2 segundos para garantir que a importação terminou
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        @BeforeEach
+        void setUp() {
+                baseUrl = "http://localhost:" + port;
+                RestAssured.baseURI = baseUrl;
+                RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
         }
 
-        // Verificar através do repositório diretamente
-        long count = municipalityRepository.count();
+        @Test
+        @DisplayName("Verificar que a API externa carregou exatamente 308 municípios no repositório")
+        void testExternalApiLoaded308Municipalities() {
+                // Aguardar que o ApplicationRunner execute e carregue os municípios
+                // A espera condicional garante que a importação terminou sem usar
+                // Thread.sleep()
+                Awaitility.await()
+                                .atMost(Duration.ofSeconds(30))
+                                .pollInterval(Duration.ofMillis(100))
+                                .until(() -> municipalityRepository.count() >= EXPECTED_MUNICIPALITIES_COUNT);
 
-        assertEquals(EXPECTED_MUNICIPALITIES_COUNT, count,
-                String.format("Esperado %d municípios, mas foram encontrados %d no repositório",
-                        EXPECTED_MUNICIPALITIES_COUNT, count));
+                // Verificar através do repositório diretamente
+                long count = municipalityRepository.count();
 
-        // Verificar que não está vazio
-        assertTrue(count > 0, "O repositório não deve estar vazio após a importação");
+                assertEquals(EXPECTED_MUNICIPALITIES_COUNT, count,
+                                String.format("Esperado %d municípios, mas foram encontrados %d no repositório",
+                                                EXPECTED_MUNICIPALITIES_COUNT, count));
 
-        // Verificar que tem pelo menos alguns municípios conhecidos
-        assertTrue(municipalityRepository.findByName("Lisboa").isPresent(),
-                "Lisboa deve estar presente na lista de municípios");
-        assertTrue(municipalityRepository.findByName("Porto").isPresent(),
-                "Porto deve estar presente na lista de municípios");
-        assertTrue(municipalityRepository.findByName("Aveiro").isPresent(),
-                "Aveiro deve estar presente na lista de municípios");
-    }
+                // Verificar que não está vazio
+                assertTrue(count > 0, "O repositório não deve estar vazio após a importação");
 
-    @Test
-    @DisplayName("Verificar que a API REST retorna 308 municípios")
-    void testApiReturns308Municipalities() {
-        // Aguardar um pouco para garantir que o ApplicationRunner executou
-        try {
-            Thread.sleep(2000); // 2 segundos para garantir que a importação terminou
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+                // Verificar que tem pelo menos alguns municípios conhecidos
+                assertTrue(municipalityRepository.findByName("Lisboa").isPresent(),
+                                "Lisboa deve estar presente na lista de municípios");
+                assertTrue(municipalityRepository.findByName("Porto").isPresent(),
+                                "Porto deve estar presente na lista de municípios");
+                assertTrue(municipalityRepository.findByName("Aveiro").isPresent(),
+                                "Aveiro deve estar presente na lista de municípios");
         }
 
-        // Verificar através da API REST
-        List<String> municipalities = given()
-                .contentType(ContentType.JSON)
-                .when()
-                .get("/api/bookings/municipalities")
-                .then()
-                .statusCode(HttpStatus.OK.value())
-                .body("size()", equalTo(EXPECTED_MUNICIPALITIES_COUNT))
-                .extract()
-                .jsonPath()
-                .getList(".", String.class);
+        @Test
+        @DisplayName("Verificar que a API REST retorna 308 municípios")
+        void testApiReturns308Municipalities() {
+                // Aguardar que o ApplicationRunner execute e carregue os municípios
+                Awaitility.await()
+                                .atMost(Duration.ofSeconds(30))
+                                .pollInterval(Duration.ofMillis(100))
+                                .until(() -> municipalityRepository.count() >= EXPECTED_MUNICIPALITIES_COUNT);
 
-        assertNotNull(municipalities, "A lista de municípios não deve ser null");
-        assertEquals(EXPECTED_MUNICIPALITIES_COUNT, municipalities.size(),
-                String.format("Esperado %d municípios na resposta da API, mas foram retornados %d",
-                        EXPECTED_MUNICIPALITIES_COUNT, municipalities.size()));
+                // Verificar através da API REST
+                List<String> municipalities = given()
+                                .contentType(ContentType.JSON)
+                                .when()
+                                .get("/api/bookings/municipalities")
+                                .then()
+                                .statusCode(HttpStatus.OK.value())
+                                .body("size()", equalTo(EXPECTED_MUNICIPALITIES_COUNT))
+                                .extract()
+                                .jsonPath()
+                                .getList(".", String.class);
 
-        // Verificar que contém municípios conhecidos
-        assertTrue(municipalities.contains("Lisboa"),
-                "A lista deve conter Lisboa");
-        assertTrue(municipalities.contains("Porto"),
-                "A lista deve conter Porto");
-        assertTrue(municipalities.contains("Aveiro"),
-                "A lista deve conter Aveiro");
+                assertNotNull(municipalities, "A lista de municípios não deve ser null");
+                assertEquals(EXPECTED_MUNICIPALITIES_COUNT, municipalities.size(),
+                                String.format("Esperado %d municípios na resposta da API, mas foram retornados %d",
+                                                EXPECTED_MUNICIPALITIES_COUNT, municipalities.size()));
 
-        // Verificar que não contém valores inválidos
-        assertTrue(municipalities.stream().noneMatch(s -> s == null || s.isBlank()),
-                "A lista não deve conter valores null ou vazios");
-    }
+                // Verificar que contém municípios conhecidos
+                assertTrue(municipalities.contains("Lisboa"),
+                                "A lista deve conter Lisboa");
+                assertTrue(municipalities.contains("Porto"),
+                                "A lista deve conter Porto");
+                assertTrue(municipalities.contains("Aveiro"),
+                                "A lista deve conter Aveiro");
 
-    @Test
-    @DisplayName("Verificar que o repositório e a API REST têm a mesma contagem de municípios")
-    void testRepositoryAndApiHaveSameCount() {
-        // Aguardar um pouco para garantir que o ApplicationRunner executou
-        try {
-            Thread.sleep(2000); // 2 segundos para garantir que a importação terminou
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+                // Verificar que não contém valores inválidos
+                assertTrue(municipalities.stream().noneMatch(s -> s == null || s.isBlank()),
+                                "A lista não deve conter valores null ou vazios");
         }
 
-        // Contar no repositório
-        long repositoryCount = municipalityRepository.count();
+        @Test
+        @DisplayName("Verificar que o repositório e a API REST têm a mesma contagem de municípios")
+        void testRepositoryAndApiHaveSameCount() {
+                // Aguardar que o ApplicationRunner execute e carregue os municípios
+                Awaitility.await()
+                                .atMost(Duration.ofSeconds(30))
+                                .pollInterval(Duration.ofMillis(100))
+                                .until(() -> municipalityRepository.count() >= EXPECTED_MUNICIPALITIES_COUNT);
 
-        // Contar através da API
-        List<String> municipalities = given()
-                .contentType(ContentType.JSON)
-                .when()
-                .get("/api/bookings/municipalities")
-                .then()
-                .statusCode(HttpStatus.OK.value())
-                .extract()
-                .jsonPath()
-                .getList(".", String.class);
+                // Contar no repositório
+                long repositoryCount = municipalityRepository.count();
 
-        int apiCount = municipalities.size();
+                // Contar através da API
+                List<String> municipalities = given()
+                                .contentType(ContentType.JSON)
+                                .when()
+                                .get("/api/bookings/municipalities")
+                                .then()
+                                .statusCode(HttpStatus.OK.value())
+                                .extract()
+                                .jsonPath()
+                                .getList(".", String.class);
 
-        assertEquals(repositoryCount, apiCount,
-                String.format("O repositório tem %d municípios mas a API retorna %d. Devem ser iguais.",
-                        repositoryCount, apiCount));
+                int apiCount = municipalities.size();
 
-        // Verificar que ambos têm o valor esperado
-        assertEquals(EXPECTED_MUNICIPALITIES_COUNT, repositoryCount,
-                "O repositório deve ter " + EXPECTED_MUNICIPALITIES_COUNT + " municípios");
-        assertEquals(EXPECTED_MUNICIPALITIES_COUNT, apiCount,
-                "A API deve retornar " + EXPECTED_MUNICIPALITIES_COUNT + " municípios");
-    }
+                assertEquals(repositoryCount, apiCount,
+                                String.format("O repositório tem %d municípios mas a API retorna %d. Devem ser iguais.",
+                                                repositoryCount, apiCount));
+
+                // Verificar que ambos têm o valor esperado
+                assertEquals(EXPECTED_MUNICIPALITIES_COUNT, repositoryCount,
+                                "O repositório deve ter " + EXPECTED_MUNICIPALITIES_COUNT + " municípios");
+                assertEquals(EXPECTED_MUNICIPALITIES_COUNT, apiCount,
+                                "A API deve retornar " + EXPECTED_MUNICIPALITIES_COUNT + " municípios");
+        }
 }

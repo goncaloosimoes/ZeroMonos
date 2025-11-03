@@ -283,7 +283,7 @@ class BookingApiEdgeCasesTest {
 
     @Test
     @DisplayName("POST /api/bookings - Deve lidar com múltiplos requests simultâneos")
-    void testCreateBooking_ConcurrentRequests() throws Exception {
+    void testCreateBooking_ConcurrentRequests() {
         LocalDate baseTomorrow = LocalDate.now().plusDays(1);
         if (baseTomorrow.getDayOfWeek().getValue() == 7) {
             baseTomorrow = baseTomorrow.plusDays(1);
@@ -305,7 +305,7 @@ class BookingApiEdgeCasesTest {
                                     "{\"municipalityName\":\"Porto\",\"requestedDate\":\"%s\",\"timeSlot\":\"AFTERNOON\",\"description\":\"Concurrent test %d\"}",
                                     date, threadIndex);
 
-                            int statusCode = given()
+                            return given()
                                     .contentType(ContentType.JSON)
                                     .body(requestBody)
                                     .when()
@@ -313,8 +313,6 @@ class BookingApiEdgeCasesTest {
                                     .then()
                                     .extract()
                                     .statusCode();
-
-                            return statusCode;
                         }, executor);
                     })
                     .toArray(CompletableFuture[]::new);

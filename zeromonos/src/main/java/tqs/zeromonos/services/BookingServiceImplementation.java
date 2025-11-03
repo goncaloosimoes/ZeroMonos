@@ -7,7 +7,6 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +20,14 @@ import tqs.zeromonos.data.MunicipalityRepository;
 import tqs.zeromonos.data.StateChange;
 import tqs.zeromonos.dto.BookingRequestDTO;
 import tqs.zeromonos.dto.BookingResponseDTO;
+import tqs.zeromonos.dto.DtoConversionException;
 
 @Service
 public class BookingServiceImplementation implements BookingService {
     private static final Logger logger = LoggerFactory.getLogger(BookingServiceImplementation.class);
+
+    // Constantes para mensagens de log
+    private static final String LOG_CAUSE = "  - Causa: {}";
 
     private BookingRepository bookingRepository;
     private MunicipalityRepository municipalityRepository;
@@ -83,13 +86,8 @@ public class BookingServiceImplementation implements BookingService {
         logger.debug("Reserva criada com token: {}", newBooking.getToken());
         logger.debug("Histórico inicial: {} entradas", newBooking.getHistory().size());
 
-        // Converter para DTO com tratamento de erro
-        try {
-            return BookingResponseDTO.fromEntity(newBooking);
-        } catch (Exception e) {
-            logger.error("Erro ao converter nova reserva para DTO:", e);
-            throw new IllegalStateException("Erro ao criar reserva: " + e.getMessage(), e);
-        }
+        // Converter para DTO usando método auxiliar que já faz tratamento de erros
+        return convertBookingToDto(newBooking);
     }
 
     private void validateDateOrThrow(LocalDate requestedDate) {
@@ -143,40 +141,25 @@ public class BookingServiceImplementation implements BookingService {
             logger.info("  - History size: {}", booking.getHistory() != null ? booking.getHistory().size() : 0);
 
             // Converter para DTO com tratamento de erro
-            try {
-                logger.debug("Iniciando conversão para DTO...");
-                BookingResponseDTO dto = BookingResponseDTO.fromEntity(booking);
-
-                if (dto == null) {
-                    logger.error("❌ Erro: DTO é null após conversão!");
-                    throw new IllegalStateException("Erro ao converter reserva para DTO");
-                }
-
-                logger.info("✅ DTO criado com sucesso:");
-                logger.info("  - Token: {}", dto.getToken());
-                logger.info("  - Status: {}", dto.getStatus());
-                logger.info("  - History: {}", dto.getHistory() != null ? dto.getHistory().size() : 0);
-
-                return dto;
-            } catch (Exception dtoError) {
-                logger.error("❌ Erro ao converter Booking para DTO:", dtoError);
-                logger.error("  - Mensagem: {}", dtoError.getMessage());
-                logger.error("  - Causa: {}", dtoError.getCause());
-                throw new IllegalStateException("Erro ao converter reserva para DTO: " + dtoError.getMessage(),
-                        dtoError);
-            }
+            return convertBookingToDto(booking);
 
         } catch (IllegalArgumentException | NoSuchElementException e) {
             // Re-throw exceções esperadas
             throw e;
         } catch (Exception e) {
-            logger.error("❌ Erro inesperado ao buscar reserva por token:", e);
-            logger.error("  - Mensagem: {}", e.getMessage());
-            logger.error("  - Causa: {}", e.getCause());
-            if (e.getCause() != null) {
-                logger.error("  - Causa da causa: {}", e.getCause().getMessage());
+            // Log detalhado e envolve exceção genérica numa BookingServiceException com
+            // contexto
+            logger.error("❌ Erro inesperado ao buscar reserva por token: {}", e.getMessage(), e);
+            Throwable cause = e.getCause();
+            if (cause != null) {
+                logger.error(LOG_CAUSE, cause.getMessage());
+                Throwable causeOfCause = cause.getCause();
+                if (causeOfCause != null) {
+                    logger.error("  - Causa da causa: {}", causeOfCause.getMessage());
+                }
             }
-            throw new IllegalStateException("Erro ao buscar reserva: " + e.getMessage(), e);
+            // Envolve numa exceção específica com contexto sobre o erro de busca de reserva
+            throw new BookingServiceException("Erro ao buscar reserva por token: " + e.getMessage(), e);
         }
     }
 
@@ -218,10 +201,10 @@ public class BookingServiceImplementation implements BookingService {
 
         List<String> municipalityNames = municipalities.stream()
                 .map(Municipality::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         logger.info("Total de municípios retornados: {}", municipalityNames.size());
-        logger.debug("Primeiros 5 municípios: {}", municipalityNames.stream().limit(5).collect(Collectors.toList()));
+        logger.debug("Primeiros 5 municípios: {}", municipalityNames.stream().limit(5).toList());
 
         return municipalityNames;
     }
@@ -283,7 +266,46 @@ public class BookingServiceImplementation implements BookingService {
         bookingRepository.save(booking);
         logger.info("{} : Status da reserva com token '{}' atualizado para {}", ts, token, newStatus);
 
-        return BookingResponseDTO.fromEntity(booking);
+        return convertBookingToDto(booking);
+    }
+
+    /**
+     * Converte um Booking para BookingResponseDTO com tratamento de erro adequado.
+     * 
+     * @param booking O Booking a ser convertido
+     * @return BookingResponseDTO convertido
+     * @throws DtoConversionException se houver erro na conversão
+     */
+    private BookingResponseDTO convertBookingToDto(Booking booking) {
+        try {
+            logger.debug("Iniciando conversão para DTO...");
+            BookingResponseDTO dto = BookingResponseDTO.fromEntity(booking);
+
+            if (dto == null) {
+                logger.error("❌ Erro: DTO é null após conversão!");
+                throw new DtoConversionException("Erro ao converter reserva para DTO: resultado null");
+            }
+
+            logger.info("✅ DTO criado com sucesso:");
+            logger.info("  - Token: {}", dto.getToken());
+            logger.info("  - Status: {}", dto.getStatus());
+            logger.info("  - History: {}", dto.getHistory() != null ? dto.getHistory().size() : 0);
+
+            return dto;
+        } catch (DtoConversionException e) {
+            // Re-lança com contexto adicional sobre o contexto da conversão (preservando
+            // causa original)
+            // Nota: Não fazemos log aqui para evitar duplicação - o log será feito no nível
+            // superior onde a exceção é capturada
+            throw new DtoConversionException(
+                    "Erro ao converter reserva para DTO durante processamento: " + e.getMessage(), e);
+        } catch (Exception dtoError) {
+            // Envolve numa exceção específica com contexto sobre o erro de conversão
+            // Nota: Não fazemos log aqui para evitar duplicação - o log será feito no nível
+            // superior onde a exceção é capturada
+            throw new DtoConversionException(
+                    "Erro inesperado ao converter reserva para DTO: " + dtoError.getMessage(), dtoError);
+        }
     }
 
 }

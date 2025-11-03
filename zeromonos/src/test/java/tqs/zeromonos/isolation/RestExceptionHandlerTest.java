@@ -18,6 +18,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import tqs.zeromonos.boundary.RestExceptionHandler;
 import tqs.zeromonos.boundary.RestExceptionHandler.ApiError;
+import tqs.zeromonos.boundary.SpringDocException;
 
 import java.util.NoSuchElementException;
 
@@ -184,5 +185,54 @@ class RestExceptionHandlerTest {
         assertEquals("Specific error", specificResponse.getBody().getMessage());
         assertEquals("An unexpected error occurred", genericResponse.getBody().getMessage());
     }
-}
 
+    // ==================== TESTES DE SpringDocException ====================
+
+    @Test
+    @DisplayName("SpringDocException - Construtor com mensagem deve criar exceção corretamente")
+    void testSpringDocException_WithMessage() {
+        // Arrange & Act
+        String message = "Erro do SpringDoc";
+        SpringDocException exception = new SpringDocException(message);
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals(message, exception.getMessage());
+        assertNull(exception.getCause());
+    }
+
+    @Test
+    @DisplayName("SpringDocException - Construtor com mensagem e causa deve criar exceção corretamente")
+    void testSpringDocException_WithMessageAndCause() {
+        // Arrange
+        String message = "Erro do SpringDoc";
+        Throwable cause = new RuntimeException("Causa raiz");
+
+        // Act
+        SpringDocException exception = new SpringDocException(message, cause);
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals(message, exception.getMessage());
+        assertNotNull(exception.getCause());
+        assertEquals(cause, exception.getCause());
+        assertEquals("Causa raiz", exception.getCause().getMessage());
+    }
+
+    @Test
+    @DisplayName("SpringDocException - Construtor apenas com causa deve criar exceção corretamente")
+    void testSpringDocException_WithCauseOnly() {
+        // Arrange
+        Throwable cause = new RuntimeException("Causa raiz");
+
+        // Act
+        SpringDocException exception = new SpringDocException(cause);
+
+        // Assert
+        assertNotNull(exception);
+        assertNotNull(exception.getMessage());
+        assertNotNull(exception.getCause());
+        assertEquals(cause, exception.getCause());
+        assertEquals("Causa raiz", exception.getCause().getMessage());
+    }
+}

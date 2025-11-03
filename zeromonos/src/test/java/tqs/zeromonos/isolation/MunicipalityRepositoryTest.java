@@ -249,10 +249,9 @@ class MunicipalityRepositoryTest {
 
         // Act & Assert
         // Tentar salvar um município com nome duplicado deve lançar exceção
-        assertThrows(DataIntegrityViolationException.class, () -> {
-            municipalityRepository.save(duplicateLisboa);
-            entityManager.flush();
-        }, "Deve lançar exceção ao tentar salvar nome duplicado");
+        assertThrows(DataIntegrityViolationException.class,
+                () -> saveAndFlush(duplicateLisboa),
+                "Deve lançar exceção ao tentar salvar nome duplicado");
     }
 
     @Test
@@ -285,10 +284,9 @@ class MunicipalityRepositoryTest {
 
         // Act & Assert
         // JPA deve validar @Column(nullable = false)
-        assertThrows(Exception.class, () -> {
-            municipalityRepository.save(municipalityWithNullName);
-            entityManager.flush();
-        }, "Deve rejeitar município com nome null");
+        assertThrows(Exception.class,
+                () -> saveAndFlush(municipalityWithNullName),
+                "Deve rejeitar município com nome null");
     }
 
     @Test
@@ -397,5 +395,16 @@ class MunicipalityRepositoryTest {
 
         Optional<Municipality> foundById = municipalityRepository.findById(coimbraId);
         assertFalse(foundById.isPresent());
+    }
+
+    // ==================== MÉTODOS AUXILIARES ====================
+
+    /**
+     * Método auxiliar para salvar e fazer flush numa única operação.
+     * Usado em assertThrows para ter apenas uma invocação no lambda.
+     */
+    private void saveAndFlush(Municipality municipality) {
+        municipalityRepository.save(municipality);
+        entityManager.flush();
     }
 }

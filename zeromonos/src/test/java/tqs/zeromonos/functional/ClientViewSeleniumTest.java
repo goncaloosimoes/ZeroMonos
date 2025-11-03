@@ -139,12 +139,11 @@ class ClientViewSeleniumTest {
 
         WebElement suggestions = driver.findElement(By.className("suggestions-dropdown"));
 
-        // Aguardar sugestões serem carregadas (pode demorar um pouco)
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Aguardar sugestões serem carregadas (aguardar que elementos de sugestão
+        // apareçam)
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.presenceOfNestedElementLocatedBy(suggestions, By.cssSelector(".suggestion-item")),
+                ExpectedConditions.visibilityOf(suggestions)));
 
         // Verificar se há sugestões (ou se pelo menos o dropdown existe)
         assertNotNull(suggestions);
@@ -152,7 +151,7 @@ class ClientViewSeleniumTest {
 
     @Test
     @DisplayName("Formulário de criação - Preenchimento e submissão válida")
-    void testCreateBookingFormSubmission() throws InterruptedException {
+    void testCreateBookingFormSubmission() {
         driver.get(baseUrl + "/create-booking.html");
 
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("booking-form")));
@@ -164,19 +163,20 @@ class ClientViewSeleniumTest {
         // Aguardar e selecionar sugestão
         wait.until(ExpectedConditions.presenceOfElementLocated(By.className("suggestions-dropdown")));
 
-        try {
-            Thread.sleep(1500); // Aguardar sugestões carregarem
+        // Aguardar sugestões carregarem (esperar que pelo menos um item de sugestão
+        // apareça)
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector(".suggestions-dropdown .suggestion-item")),
+                ExpectedConditions.textToBePresentInElementValue(municipalityInput, "Lisboa")));
 
-            // Tentar clicar numa sugestão se aparecer
-            List<WebElement> suggestions = driver
-                    .findElements(By.cssSelector(".suggestions-dropdown .suggestion-item"));
-            if (!suggestions.isEmpty()) {
-                suggestions.get(0).click();
-            } else {
-                // Se não aparecer sugestão, continuar com "Lisboa" no input
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        // Tentar clicar numa sugestão se aparecer
+        List<WebElement> suggestions = driver
+                .findElements(By.cssSelector(".suggestions-dropdown .suggestion-item"));
+        if (!suggestions.isEmpty()) {
+            wait.until(ExpectedConditions.elementToBeClickable(suggestions.get(0)));
+            suggestions.get(0).click();
+        } else {
+            // Se não aparecer sugestão, continuar com "Lisboa" no input
         }
 
         // Preencher data (amanhã)
@@ -191,14 +191,22 @@ class ClientViewSeleniumTest {
         dateInput.clear();
         String dateStr = tomorrow.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         dateInput.sendKeys(dateStr);
-        Thread.sleep(200); // Pequeno delay para garantir que a data foi inserida
+        // Aguardar que o valor seja inserido verificando o atributo value
+        wait.until(d -> {
+            WebElement input = d.findElement(By.id("requestedDate"));
+            return dateStr.equals(input.getDomProperty("value")) || !input.getDomProperty("value").isEmpty();
+        });
 
         // Selecionar período usando Select
         WebElement timeSlotSelect = driver.findElement(By.id("timeSlot"));
         org.openqa.selenium.support.ui.Select timeSlotDropdown = new org.openqa.selenium.support.ui.Select(
                 timeSlotSelect);
         timeSlotDropdown.selectByValue("AFTERNOON");
-        Thread.sleep(200); // Pequeno delay para garantir que o valor foi selecionado
+        // Aguardar que o valor seja selecionado verificando o atributo value
+        wait.until(d -> {
+            WebElement select = d.findElement(By.id("timeSlot"));
+            return "AFTERNOON".equals(select.getDomProperty("value"));
+        });
 
         // Preencher descrição
         WebElement descriptionInput = driver.findElement(By.id("description"));
@@ -209,7 +217,8 @@ class ClientViewSeleniumTest {
                 .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("button[type='submit']")));
         // Fazer scroll até ao botão
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", submitButton);
-        Thread.sleep(500); // Pequeno delay para garantir que o scroll terminou
+        // Aguardar que o botão esteja visível e clicável após scroll
+        wait.until(ExpectedConditions.elementToBeClickable(submitButton));
         // Usar JavascriptExecutor para clicar se necessário
         try {
             submitButton.click();
@@ -228,9 +237,13 @@ class ClientViewSeleniumTest {
             return !text.isEmpty() && (text.length() > 10); // Esperar que tenha algum conteúdo
         });
 
-        // Aguardar um pouco mais para garantir que a mensagem está completamente
-        // renderizada
-        Thread.sleep(1000);
+        // Aguardar que a mensagem esteja completamente renderizada (verificar que não
+        // está vazia e tem tamanho mínimo)
+        wait.until(d -> {
+            WebElement msg = d.findElement(By.id("form-msg"));
+            String text = msg.getText();
+            return text.length() > 10 && msg.isDisplayed();
+        });
 
         // Verificar se contém mensagem de sucesso (verificar várias possibilidades)
         String messageText = messageContainer.getText();
@@ -256,11 +269,8 @@ class ClientViewSeleniumTest {
                 .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("button[type='submit']")));
         // Fazer scroll até ao botão
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", submitButton);
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // Aguardar que o botão esteja visível e clicável após scroll
+        wait.until(ExpectedConditions.elementToBeClickable(submitButton));
         // Usar JavascriptExecutor para clicar se necessário
         try {
             submitButton.click();
@@ -297,7 +307,7 @@ class ClientViewSeleniumTest {
 
     @Test
     @DisplayName("Página de consulta - Busca por token válido")
-    void testLookupBookingByToken() throws InterruptedException {
+    void testLookupBookingByToken() {
         // Primeiro criar um booking através da API
         String token = createBookingViaAPI();
 
@@ -315,9 +325,10 @@ class ClientViewSeleniumTest {
 
         // Aguardar detalhes aparecerem e serem exibidos
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("booking-details")));
-        
+
         // Aguardar que a classe "hidden" seja removida
-        wait.until(ExpectedConditions.not(ExpectedConditions.attributeContains(By.id("booking-details"), "class", "hidden")));
+        wait.until(ExpectedConditions
+                .not(ExpectedConditions.attributeContains(By.id("booking-details"), "class", "hidden")));
 
         // Aguardar que o details-grid tenha conteúdo
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("details-grid")));
@@ -362,7 +373,7 @@ class ClientViewSeleniumTest {
 
     @Test
     @DisplayName("Página de consulta - Cancelamento de booking")
-    void testCancelBookingFromLookup() throws InterruptedException {
+    void testCancelBookingFromLookup() {
         // Criar booking cancelável
         String token = createBookingViaAPI();
 
@@ -379,23 +390,24 @@ class ClientViewSeleniumTest {
 
         // Aguardar detalhes e que o botão de cancelar seja clicável
         wait.until(ExpectedConditions.presenceOfElementLocated(By.id("booking-details")));
-        
+
         // Aguardar que o botão de cancelar esteja visível e clicável (não disabled)
         wait.until(ExpectedConditions.elementToBeClickable(By.id("cancel-btn")));
-        
+
         // Re-obter o elemento para evitar StaleElementReference
         WebElement cancelButton = driver.findElement(By.id("cancel-btn"));
-        
+
         // Fazer scroll até ao botão
         ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", cancelButton);
-        Thread.sleep(500);
-        
+        // Aguardar que o botão esteja clicável após scroll
+        wait.until(ExpectedConditions.elementToBeClickable(cancelButton));
+
         // Usar JavaScript para clicar diretamente
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", cancelButton);
 
         // Confirmar no alert (se existir)
         try {
-            Thread.sleep(500);
+            wait.until(ExpectedConditions.alertIsPresent());
             driver.switchTo().alert().accept();
         } catch (Exception e) {
             // Pode não haver alert
@@ -416,7 +428,7 @@ class ClientViewSeleniumTest {
 
     // ==================== MÉTODOS AUXILIARES ====================
 
-    private String createBookingViaAPI() throws InterruptedException {
+    private String createBookingViaAPI() {
         // Usar RestAssured para criar um booking via API
         // Usar Aveiro em vez de Lisboa para evitar conflitos com outros testes
         LocalDate tomorrow = LocalDate.now().plusDays(1);
@@ -435,7 +447,8 @@ class ClientViewSeleniumTest {
                     .body(requestBody)
                     .post(baseUrl + "/api/bookings")
                     .then()
-                    .statusCode(anyOf(org.hamcrest.Matchers.is(200), org.hamcrest.Matchers.is(409))) // Pode ser 409 se atingir limite
+                    .statusCode(anyOf(org.hamcrest.Matchers.is(200), org.hamcrest.Matchers.is(409))) // Pode ser 409 se
+                                                                                                     // atingir limite
                     .extract()
                     .path("token");
         } catch (Exception e) {
@@ -457,7 +470,8 @@ class ClientViewSeleniumTest {
                     .path("token");
         }
 
-        Thread.sleep(500); // Pequeno delay para garantir que o booking está disponível
+        // Não é necessário Thread.sleep() - a API já processou o booking quando retorna
+        // o token
         return response;
     }
 }

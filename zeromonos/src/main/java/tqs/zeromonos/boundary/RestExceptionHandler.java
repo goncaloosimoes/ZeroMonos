@@ -17,11 +17,13 @@ import java.util.NoSuchElementException;
 @ControllerAdvice
 @ResponseBody
 public class RestExceptionHandler {
-    
+
     // Excluir endpoints do SpringDoc do tratamento de exceções
     private boolean isSpringDocPath(WebRequest req) {
-        String path = req.getDescription(false);
-        return path != null && (path.contains("/v3/api-docs") || path.contains("/swagger-ui") || path.contains("springdoc"));
+        String description = req.getDescription(false);
+        // Extrair apenas o caminho da URI (remover "uri=" prefix se existir)
+        String path = description.replace("uri=", "");
+        return path.contains("/v3/api-docs") || path.contains("/swagger-ui");
     }
 
     private static final Logger log = LoggerFactory.getLogger(RestExceptionHandler.class);
@@ -86,7 +88,8 @@ public class RestExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiError> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex,
             WebRequest req) {
-        log.warn("Method not supported: {} for {}", ex.getMethod(), req.getDescription(false));
+        String requestDescription = req.getDescription(false);
+        log.warn("Method not supported: {} for {}", ex.getMethod(), requestDescription);
         return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "HTTP method not supported for this endpoint", req);
     }
 
@@ -98,14 +101,16 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpectedError(Exception ex, WebRequest req) {
-        // Ignora erros do SpringDoc OpenAPI para não interferir com a geração de documentação
+        // Ignora erros do SpringDoc OpenAPI para não interferir com a geração de
+        // documentação
         if (isSpringDocPath(req)) {
             log.debug("Erro do SpringDoc - re-lançando: {}", ex.getMessage());
             // Re-lança a exceção para que o SpringDoc a trate
-            if (ex instanceof RuntimeException) {
-                throw (RuntimeException) ex;
+            if (ex instanceof RuntimeException runtimeException) {
+                throw runtimeException;
             }
-            throw new RuntimeException(ex);
+            // Envolve exceções checked numa exceção customizada específica
+            throw new SpringDocException("Erro do SpringDoc ao processar requisição", ex);
         }
         log.error("Exceção não tratada: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", req);

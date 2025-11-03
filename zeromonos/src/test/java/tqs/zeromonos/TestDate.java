@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 
 @DisplayName("Testes de Validação de Datas")
-public class TestDate {
+class TestDate {
 
     private LocalDate today;
     private ZoneId zone;

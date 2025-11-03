@@ -2,7 +2,7 @@ package tqs.zeromonos.utils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 import tqs.zeromonos.data.StateChange;
 
@@ -10,6 +10,13 @@ import tqs.zeromonos.data.StateChange;
  * Utilidade para mapear histórico de mudanças de estado
  */
 public class HistoryMapper {
+
+    /**
+     * Construtor privado para prevenir instanciação desta classe utilitária.
+     */
+    private HistoryMapper() {
+        throw new AssertionError("Esta classe não deve ser instanciada");
+    }
 
     /**
      * Converte lista de StateChange para lista de strings legíveis
@@ -24,9 +31,9 @@ public class HistoryMapper {
 
         try {
             return history.stream()
-                    .filter(sc -> sc != null)
+                    .filter(Objects::nonNull)
                     .map(HistoryMapper::formatStateChange)
-                    .collect(Collectors.toList());
+                    .toList();
         } catch (Exception e) {
             // Em caso de erro, retorna lista vazia
             return new ArrayList<>();

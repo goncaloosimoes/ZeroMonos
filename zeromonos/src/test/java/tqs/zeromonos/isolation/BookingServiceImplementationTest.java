@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import tqs.zeromonos.data.Booking;
@@ -30,6 +31,8 @@ import tqs.zeromonos.data.StateChange;
 import tqs.zeromonos.data.TimeSlot;
 import tqs.zeromonos.dto.BookingRequestDTO;
 import tqs.zeromonos.dto.BookingResponseDTO;
+import tqs.zeromonos.dto.DtoConversionException;
+import tqs.zeromonos.services.BookingServiceException;
 import tqs.zeromonos.services.BookingServiceImplementation;
 
 @ExtendWith(MockitoExtension.class)
@@ -113,11 +116,12 @@ class BookingServiceImplementationTest {
     void testCreateBooking_MunicipalityNotFound() {
         // Arrange
         when(municipalityRepository.findByName("MunicipioInexistente")).thenReturn(Optional.empty());
+        BookingRequestDTO request = createRequestDTO("MunicipioInexistente", validDate);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> bookingService.createBooking(createRequestDTO("MunicipioInexistente", validDate)),
+                () -> bookingService.createBooking(request),
                 "Deve lançar IllegalArgumentException quando município não existe");
 
         assertEquals("Município 'MunicipioInexistente' não encontrado", exception.getMessage());
@@ -131,11 +135,12 @@ class BookingServiceImplementationTest {
         // Arrange
         LocalDate yesterday = LocalDate.now(ZoneId.of("Europe/Lisbon")).minusDays(1);
         when(municipalityRepository.findByName("Lisboa")).thenReturn(Optional.of(mockMunicipality));
+        BookingRequestDTO request = createRequestDTO("Lisboa", yesterday);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> bookingService.createBooking(createRequestDTO("Lisboa", yesterday)),
+                () -> bookingService.createBooking(request),
                 "Deve lançar IllegalArgumentException para data no passado");
 
         assertEquals("A data solicitada não pode ser no passado", exception.getMessage());
@@ -148,11 +153,12 @@ class BookingServiceImplementationTest {
         // Arrange
         LocalDate today = LocalDate.now(ZoneId.of("Europe/Lisbon"));
         when(municipalityRepository.findByName("Lisboa")).thenReturn(Optional.of(mockMunicipality));
+        BookingRequestDTO request = createRequestDTO("Lisboa", today);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> bookingService.createBooking(createRequestDTO("Lisboa", today)),
+                () -> bookingService.createBooking(request),
                 "Deve lançar IllegalArgumentException para data hoje");
 
         assertEquals("A data solicitada não pode ser no mesmo dia", exception.getMessage());
@@ -165,11 +171,12 @@ class BookingServiceImplementationTest {
         // Arrange
         LocalDate sunday = findNextSunday();
         when(municipalityRepository.findByName("Lisboa")).thenReturn(Optional.of(mockMunicipality));
+        BookingRequestDTO request = createRequestDTO("Lisboa", sunday);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> bookingService.createBooking(createRequestDTO("Lisboa", sunday)),
+                () -> bookingService.createBooking(request),
                 "Deve lançar IllegalArgumentException para domingo");
 
         assertEquals("Não são feitas recolhas ao fim de semana", exception.getMessage());
@@ -215,6 +222,145 @@ class BookingServiceImplementationTest {
     }
 
     @Test
+    @DisplayName("getBookingByToken - Deve lançar BookingServiceException quando ocorre erro na conversão")
+    void testGetBookingByToken_ConversionError() {
+        // Arrange
+        String token = mockBooking.getToken();
+
+        // Criar um Booking que cause erro na conversão
+        // Usar um spy para fazer getHistory() lançar uma exceção genérica durante a
+        // conversão
+        Booking problematicBooking = spy(mockBooking);
+        when(problematicBooking.getHistory()).thenThrow(new RuntimeException("Erro ao obter histórico"));
+        when(bookingRepository.findByToken(token)).thenReturn(Optional.of(problematicBooking));
+
+        // Act & Assert
+        // O erro em getHistory() será apanhado por fromEntity e lançado como
+        // DtoConversionException
+        // que será apanhado pelo catch de Exception em getBookingByToken e lançado como
+        // BookingServiceException
+        BookingServiceException exception = assertThrows(
+                BookingServiceException.class,
+                () -> bookingService.getBookingByToken(token),
+                "Deve lançar BookingServiceException quando ocorre erro na conversão");
+
+        assertTrue(exception.getMessage().contains("Erro ao buscar reserva por token"));
+        assertNotNull(exception.getCause());
+        verify(bookingRepository, times(1)).findByToken(token);
+    }
+
+    @Test
+    @DisplayName("getBookingByToken - Deve lançar BookingServiceException quando ocorre erro inesperado na conversão")
+    void testGetBookingByToken_UnexpectedConversionError() {
+        // Arrange
+        String token = mockBooking.getToken();
+
+        // Criar um Booking que cause erro durante a conversão
+        // Usar um spy para fazer getMunicipality().getName() lançar uma exceção
+        // genérica
+        Booking problematicBooking = spy(mockBooking);
+        Municipality mockMunicipalitySpy = spy(mockMunicipality);
+        when(problematicBooking.getMunicipality()).thenReturn(mockMunicipalitySpy);
+        when(mockMunicipalitySpy.getName()).thenThrow(new RuntimeException("Erro ao obter nome do município"));
+        when(bookingRepository.findByToken(token)).thenReturn(Optional.of(problematicBooking));
+
+        // Act & Assert
+        // O erro em getName() será apanhado por fromEntity e lançado como
+        // DtoConversionException
+        // que será apanhado pelo catch de Exception em getBookingByToken e lançado como
+        // BookingServiceException
+        BookingServiceException exception = assertThrows(
+                BookingServiceException.class,
+                () -> bookingService.getBookingByToken(token),
+                "Deve lançar BookingServiceException quando ocorre erro inesperado na conversão");
+
+        assertTrue(exception.getMessage().contains("Erro ao buscar reserva por token"));
+        assertNotNull(exception.getCause());
+        verify(bookingRepository, times(1)).findByToken(token);
+    }
+
+    @Test
+    @DisplayName("getBookingByToken - Deve lançar BookingServiceException quando ocorre DtoConversionException na conversão")
+    void testGetBookingByToken_DtoConversionException() {
+        // Arrange
+        String token = mockBooking.getToken();
+        when(bookingRepository.findByToken(token)).thenReturn(Optional.of(mockBooking));
+
+        // Criar uma DtoConversionException com causa
+        RuntimeException rootCause = new RuntimeException("Erro ao aceder propriedade do Booking");
+        DtoConversionException dtoConversionException = new DtoConversionException(
+                "Erro ao converter Booking para DTO", rootCause);
+
+        // Usar MockedStatic para fazer mock do método estático fromEntity
+        try (MockedStatic<BookingResponseDTO> mockedStatic = mockStatic(BookingResponseDTO.class)) {
+            // Fazer com que fromEntity lance uma DtoConversionException
+            mockedStatic.when(() -> BookingResponseDTO.fromEntity(mockBooking))
+                    .thenThrow(dtoConversionException);
+
+            // Act & Assert
+            // A DtoConversionException será apanhada pelo catch de DtoConversionException
+            // em convertBookingToDto e re-lançada com contexto adicional,
+            // que será apanhada pelo catch de Exception em getBookingByToken e lançada como
+            // BookingServiceException
+            BookingServiceException exception = assertThrows(
+                    BookingServiceException.class,
+                    () -> bookingService.getBookingByToken(token),
+                    "Deve lançar BookingServiceException quando ocorre DtoConversionException na conversão");
+
+            assertTrue(exception.getMessage().contains("Erro ao buscar reserva por token"));
+            assertNotNull(exception.getCause());
+            // Verificar que a causa é uma DtoConversionException com mensagem modificada
+            assertTrue(exception.getCause() instanceof DtoConversionException);
+            assertTrue(exception.getCause().getMessage()
+                    .contains("Erro ao converter reserva para DTO durante processamento"));
+            // Verificar que a causa original foi preservada
+            // A causa da nova DtoConversionException é a DtoConversionException original
+            assertNotNull(exception.getCause().getCause());
+            assertTrue(exception.getCause().getCause() instanceof DtoConversionException);
+            assertEquals("Erro ao converter Booking para DTO", exception.getCause().getCause().getMessage());
+            // Verificar que a causa raiz original foi preservada
+            assertNotNull(exception.getCause().getCause().getCause());
+            assertEquals(rootCause, exception.getCause().getCause().getCause());
+            verify(bookingRepository, times(1)).findByToken(token);
+        }
+    }
+
+    @Test
+    @DisplayName("getBookingByToken - Deve lançar BookingServiceException quando ocorre erro genérico após conversão")
+    void testGetBookingByToken_GenericExceptionAfterConversion() {
+        // Arrange
+        String token = mockBooking.getToken();
+        when(bookingRepository.findByToken(token)).thenReturn(Optional.of(mockBooking));
+
+        // Criar um mock do DTO que lance uma exceção genérica quando acedido
+        BookingResponseDTO problematicDto = mock(BookingResponseDTO.class);
+        when(problematicDto.getToken()).thenThrow(new RuntimeException("Erro inesperado ao aceder token"));
+
+        // Usar MockedStatic para fazer mock do método estático fromEntity
+        try (MockedStatic<BookingResponseDTO> mockedStatic = mockStatic(BookingResponseDTO.class)) {
+            // Fazer com que fromEntity retorne o DTO problemático
+            mockedStatic.when(() -> BookingResponseDTO.fromEntity(mockBooking)).thenReturn(problematicDto);
+
+            // Act & Assert
+            // O erro ao aceder getToken() será apanhado pelo catch de Exception genérica
+            // em convertBookingToDto e lançado como DtoConversionException,
+            // que será apanhado pelo catch de Exception em getBookingByToken e lançado como
+            // BookingServiceException
+            BookingServiceException exception = assertThrows(
+                    BookingServiceException.class,
+                    () -> bookingService.getBookingByToken(token),
+                    "Deve lançar BookingServiceException quando ocorre erro genérico após conversão");
+
+            assertTrue(exception.getMessage().contains("Erro ao buscar reserva por token"));
+            assertNotNull(exception.getCause());
+            // Verificar que a causa é uma DtoConversionException
+            assertTrue(exception.getCause() instanceof DtoConversionException);
+            assertTrue(exception.getCause().getMessage().contains("Erro inesperado ao converter reserva para DTO"));
+            verify(bookingRepository, times(1)).findByToken(token);
+        }
+    }
+
+    @Test
     @DisplayName("getBookingByToken - Deve lançar exceção quando token é null")
     void testGetBookingByToken_NullToken() {
         // Act & Assert
@@ -254,6 +400,53 @@ class BookingServiceImplementationTest {
                 "Deve lançar NoSuchElementException quando token não existe");
 
         assertEquals("Agendamento não encontrado para o token fornecido", exception.getMessage());
+        verify(bookingRepository, times(1)).findByToken(token);
+    }
+
+    @Test
+    @DisplayName("getBookingByToken - Deve lançar BookingServiceException quando ocorre erro inesperado")
+    void testGetBookingByToken_UnexpectedError() {
+        // Arrange
+        String token = "valid-token";
+        // Simular um erro inesperado do repositório (ex: erro de base de dados)
+        when(bookingRepository.findByToken(token))
+                .thenThrow(new RuntimeException("Erro inesperado de base de dados"));
+
+        // Act & Assert
+        BookingServiceException exception = assertThrows(
+                BookingServiceException.class,
+                () -> bookingService.getBookingByToken(token),
+                "Deve lançar BookingServiceException quando ocorre erro inesperado");
+
+        assertTrue(exception.getMessage().contains("Erro ao buscar reserva por token"));
+        assertNotNull(exception.getCause());
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertEquals("Erro inesperado de base de dados", exception.getCause().getMessage());
+        verify(bookingRepository, times(1)).findByToken(token);
+    }
+
+    @Test
+    @DisplayName("getBookingByToken - Deve lançar BookingServiceException com causa aninhada quando ocorre erro inesperado")
+    void testGetBookingByToken_UnexpectedErrorWithNestedCause() {
+        // Arrange
+        String token = "valid-token";
+        // Simular um erro inesperado com causa aninhada
+        RuntimeException nestedCause = new RuntimeException("Causa raiz");
+        RuntimeException rootCause = new RuntimeException("Erro de base de dados", nestedCause);
+        when(bookingRepository.findByToken(token)).thenThrow(rootCause);
+
+        // Act & Assert
+        BookingServiceException exception = assertThrows(
+                BookingServiceException.class,
+                () -> bookingService.getBookingByToken(token),
+                "Deve lançar BookingServiceException quando ocorre erro inesperado com causa aninhada");
+
+        assertTrue(exception.getMessage().contains("Erro ao buscar reserva por token"));
+        assertNotNull(exception.getCause());
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertEquals("Erro de base de dados", exception.getCause().getMessage());
+        assertNotNull(exception.getCause().getCause());
+        assertEquals("Causa raiz", exception.getCause().getCause().getMessage());
         verify(bookingRepository, times(1)).findByToken(token);
     }
 
@@ -521,5 +714,118 @@ class BookingServiceImplementationTest {
             date = date.plusDays(1);
         }
         return date;
+    }
+
+    // ==================== TESTES DE BookingResponseDTO.fromEntity
+    // ====================
+
+    @Test
+    @DisplayName("BookingResponseDTO.fromEntity - Deve lançar DtoConversionException quando ocorre erro genérico durante conversão")
+    void testBookingResponseDTOFromEntity_GenericException() {
+        // Arrange
+        // Criar um Booking que cause erro durante a conversão
+        // Usar um spy para fazer getId() lançar uma exceção genérica
+        Booking problematicBooking = spy(mockBooking);
+        when(problematicBooking.getId()).thenThrow(new RuntimeException("Erro ao obter ID do Booking"));
+
+        // Act & Assert
+        // O erro em getId() será apanhado pelo catch de Exception genérica
+        // em fromEntity e lançado como DtoConversionException
+        DtoConversionException exception = assertThrows(
+                DtoConversionException.class,
+                () -> BookingResponseDTO.fromEntity(problematicBooking),
+                "Deve lançar DtoConversionException quando ocorre erro genérico durante conversão");
+
+        assertTrue(exception.getMessage().contains("Erro ao converter Booking para DTO"));
+        assertNotNull(exception.getCause());
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertEquals("Erro ao obter ID do Booking", exception.getCause().getMessage());
+    }
+
+    @Test
+    @DisplayName("BookingResponseDTO.fromEntity - Deve lançar DtoConversionException quando HistoryMapper lança exceção")
+    void testBookingResponseDTOFromEntity_HistoryMapperException() {
+        // Arrange
+        // Criar um Booking que cause erro no HistoryMapper
+        // Usar um spy para fazer getHistory() lançar uma exceção genérica
+        Booking problematicBooking = spy(mockBooking);
+        when(problematicBooking.getHistory()).thenThrow(new RuntimeException("Erro ao obter histórico"));
+
+        // Act & Assert
+        // O erro em getHistory() será apanhado pelo catch de Exception genérica
+        // em fromEntity e lançado como DtoConversionException
+        DtoConversionException exception = assertThrows(
+                DtoConversionException.class,
+                () -> BookingResponseDTO.fromEntity(problematicBooking),
+                "Deve lançar DtoConversionException quando HistoryMapper lança exceção");
+
+        assertTrue(exception.getMessage().contains("Erro ao converter Booking para DTO"));
+        assertNotNull(exception.getCause());
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertEquals("Erro ao obter histórico", exception.getCause().getMessage());
+    }
+
+    // ==================== TESTES DE BookingServiceException ====================
+
+    @Test
+    @DisplayName("BookingServiceException - Construtor com mensagem deve criar exceção corretamente")
+    void testBookingServiceException_WithMessage() {
+        // Arrange & Act
+        String message = "Erro no serviço de reservas";
+        BookingServiceException exception = new BookingServiceException(message);
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals(message, exception.getMessage());
+        assertNull(exception.getCause());
+    }
+
+    @Test
+    @DisplayName("BookingServiceException - Construtor apenas com causa deve criar exceção corretamente")
+    void testBookingServiceException_WithCauseOnly() {
+        // Arrange
+        Throwable cause = new RuntimeException("Causa raiz");
+
+        // Act
+        BookingServiceException exception = new BookingServiceException(cause);
+
+        // Assert
+        assertNotNull(exception);
+        assertNotNull(exception.getMessage());
+        assertNotNull(exception.getCause());
+        assertEquals(cause, exception.getCause());
+        assertEquals("Causa raiz", exception.getCause().getMessage());
+    }
+
+    // ==================== TESTES DE DtoConversionException ====================
+
+    @Test
+    @DisplayName("DtoConversionException - Construtor com mensagem deve criar exceção corretamente")
+    void testDtoConversionException_WithMessage() {
+        // Arrange & Act
+        String message = "Erro ao converter Booking para DTO";
+        DtoConversionException exception = new DtoConversionException(message);
+
+        // Assert
+        assertNotNull(exception);
+        assertEquals(message, exception.getMessage());
+        assertNull(exception.getCause());
+    }
+
+    @Test
+    @DisplayName("DtoConversionException - Construtor apenas com causa deve criar exceção corretamente")
+    void testDtoConversionException_WithCauseOnly() {
+        // Arrange
+        Throwable cause = new RuntimeException("Causa raiz");
+
+        // Act
+        DtoConversionException exception = new DtoConversionException(cause);
+
+        // Assert
+        assertNotNull(exception);
+        assertNotNull(exception.getMessage());
+        assertNotNull(exception.getCause());
+        assertEquals(cause, exception.getCause());
+        assertEquals("Causa raiz", exception.getCause().getMessage());
     }
 }

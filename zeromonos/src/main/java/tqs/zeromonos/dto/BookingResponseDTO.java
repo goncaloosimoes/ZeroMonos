@@ -22,8 +22,13 @@ public class BookingResponseDTO {
     private OffsetDateTime updatedAt;
     private List<String> history;
 
+    /**
+     * Construtor vazio necessário para deserialização JSON.
+     * Frameworks como Jackson (usado pelo Spring Boot) requerem um construtor
+     * padrão sem argumentos para converter JSON em objetos Java.
+     */
     public BookingResponseDTO() {
-
+        // Construtor vazio intencionalmente - necessário para deserialização JSON
     }
 
     public static BookingResponseDTO fromEntity(Booking booking) {
@@ -69,7 +74,7 @@ public class BookingResponseDTO {
 
             return bookingResponseDTO;
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao converter Booking para DTO: " + e.getMessage(), e);
+            throw new DtoConversionException("Erro ao converter Booking para DTO: " + e.getMessage(), e);
         }
     }
 

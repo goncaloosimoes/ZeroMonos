@@ -12,6 +12,13 @@ public class DateValidator {
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Europe/Lisbon");
 
     /**
+     * Construtor privado para prevenir instanciação desta classe utilitária.
+     */
+    private DateValidator() {
+        throw new AssertionError("Esta classe não deve ser instanciada");
+    }
+
+    /**
      * Valida se uma data é válida para um agendamento de recolha
      * 
      * @param requestedDate data a validar
