@@ -32,6 +32,10 @@
 		<rest-assured.version>5.4.0</rest-assured.version>
 		<cucumber.version>7.18.0</cucumber.version>
 	</properties>
+	<properties>
+  		<sonar.organization>goncaloosimoes</sonar.organization>
+  		<sonar.projectKey>zeromonos</sonar.projectKey>
+	</properties>
 	<dependencies>
 
 		<!-- Spring Boot Starter -->
