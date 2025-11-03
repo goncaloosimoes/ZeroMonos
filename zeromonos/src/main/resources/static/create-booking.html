@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Agende a recolha de resíduos volumosos no ZeroMonos. Preencha os dados e agende a recolha de móveis e eletrodomésticos.">
+  <title>Agendar Recolha - ZeroMonos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/zeromonos-base.css">
+  <link rel="stylesheet" href="/css/zeromonos-booking-create.css">
+</head>
+
+<body>
+  <div class="container">
+    <header class="page-header">
+      <div class="header-content">
+        <div class="header-icon">🗑️</div>
+        <div class="header-text">
+          <h1 class="page-title">Agendar Recolha</h1>
+          <p class="page-subtitle">Preencha os dados abaixo para agendar a recolha dos seus resíduos</p>
+        </div>
+      </div>
+      <a href="/" class="btn btn-secondary btn-back">
+        <span>←</span>
+        <span>Voltar</span>
+      </a>
+    </header>
+
+    <main class="form-container">
+      <form id="booking-form" class="booking-form" novalidate>
+        <div class="form-section">
+          <h2 class="section-title">Informações Básicas</h2>
+
+          <div class="form-group">
+            <label for="municipality">
+              <span>Município</span>
+              <span class="required-badge">*</span>
+            </label>
+            <div class="input-wrapper">
+              <input type="text" id="municipality" name="municipalityName" placeholder="Digite o nome do município..."
+                autocomplete="off" data-lpignore="true" data-form-type="other" required
+                aria-describedby="municipality-help" aria-autocomplete="list" aria-expanded="false" spellcheck="false">
+              <div id="suggestions-dropdown" class="suggestions-dropdown" role="listbox"
+                aria-label="Sugestões de municípios"></div>
+            </div>
+            <small id="municipality-help" class="field-help">Comece a digitar para ver sugestões de municípios
+              disponíveis</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group form-group-half">
+              <label for="requestedDate">
+                <span>Data da Recolha</span>
+                <span class="required-badge">*</span>
+              </label>
+              <input type="date" id="requestedDate" name="requestedDate" required min="" aria-describedby="date-help">
+              <small id="date-help" class="field-help">Selecione a data desejada</small>
+            </div>
+
+            <div class="form-group form-group-half">
+              <label for="timeSlot">
+                <span>Período do Dia</span>
+                <span class="required-badge">*</span>
+              </label>
+              <select id="timeSlot" name="timeSlot" required aria-describedby="timeslot-help">
+                <option value="">Selecione um período...</option>
+                <option value="EARLY_MORNING">🌄 Madrugada (06:00 - 08:00)</option>
+                <option value="MORNING">🌅 Manhã (08:00 - 12:00)</option>
+                <option value="AFTERNOON">☀️ Tarde (12:00 - 16:00)</option>
+                <option value="EVENING">🌇 Fim de tarde (16:00 - 20:00)</option>
+                <option value="NIGHT">🌙 Noite (20:00 - 22:00)</option>
+                <option value="LATE_NIGHT">🌃 Madrugada tardia (22:00 - 06:00)</option>
+                <option value="ANYTIME">⏰ Qualquer hora</option>
+              </select>
+              <small id="timeslot-help" class="field-help">Escolha o período mais conveniente</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h2 class="section-title">Detalhes dos Resíduos</h2>
+
+          <div class="form-group">
+            <label for="description">
+              <span>Descrição dos Resíduos</span>
+              <span class="required-badge">*</span>
+            </label>
+            <textarea id="description" name="description" placeholder="Ex: Sofá 3 lugares, colchão, máquina de lavar..."
+              required rows="4" aria-describedby="description-help"></textarea>
+            <small id="description-help" class="field-help">Descreva os resíduos volumosos que pretende que sejam
+              recolhidos</small>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-submit">
+            <span>✓</span>
+            <span>Agendar Recolha</span>
+          </button>
+          <a href="/" class="btn btn-secondary btn-cancel">
+            <span>✕</span>
+            <span>Cancelar</span>
+          </a>
+        </div>
+      </form>
+
+      <div id="form-msg" class="message-container" role="alert" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <script src="/js/zeromonos-booking-create.js"></script>
+</body>
+
+</html>

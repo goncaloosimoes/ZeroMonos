@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Consulte seu agendamento de recolha de resíduos volumosos no ZeroMonos usando o token único.">
+  <title>Consultar Agendamento - ZeroMonos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/zeromonos-base.css">
+  <link rel="stylesheet" href="/css/zeromonos-booking-lookup.css">
+</head>
+
+<body>
+  <div class="container">
+    <header class="page-header">
+      <div class="header-content">
+        <div class="header-icon">🔍</div>
+        <div class="header-text">
+          <h1 class="page-title">Consultar Agendamento</h1>
+          <p class="page-subtitle">Digite o token do seu agendamento para visualizar os detalhes</p>
+        </div>
+      </div>
+      <a href="/" class="btn btn-secondary btn-back">
+        <span>←</span>
+        <span>Voltar</span>
+      </a>
+    </header>
+
+    <main class="view-container">
+      <section id="search-section" class="search-section">
+        <div class="search-card">
+          <div class="search-icon">🔑</div>
+          <h2 class="section-title">Token de Acesso</h2>
+          <p class="section-description">Insira o token único que foi fornecido quando agendou a recolha</p>
+
+          <form id="search-form-internal" class="search-form">
+            <div class="form-group">
+              <label for="token">
+                <span>Token do Agendamento</span>
+              </label>
+              <div class="token-input-wrapper">
+                <input type="text" id="token" name="token" placeholder="Ex: abc123def456..." autocomplete="off" required
+                  aria-describedby="token-help" pattern="[A-Za-z0-9]+" title="Digite apenas letras e números">
+              </div>
+              <small id="token-help" class="field-help">O token é uma sequência alfanumérica única do seu
+                agendamento</small>
+            </div>
+
+            <button type="submit" id="search-btn" class="btn btn-primary btn-search">
+              <span>🔎</span>
+              <span>Buscar Agendamento</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section id="booking-details" class="details-section hidden" role="region" aria-label="Detalhes do Agendamento">
+        <div class="details-card">
+          <div class="details-header">
+            <div class="status-icon"></div>
+            <h2 class="details-title">Detalhes do Agendamento</h2>
+          </div>
+
+          <div class="details-content">
+            <div class="detail-grid" id="details-grid"></div>
+          </div>
+
+          <div class="details-actions">
+            <button id="cancel-btn" class="btn btn-danger btn-cancel">
+              <span>✕</span>
+              <span>Cancelar Agendamento</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div id="message" class="message-container" role="alert" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <script src="/js/zeromonos-booking-lookup.js"></script>
+</body>
+
+</html>

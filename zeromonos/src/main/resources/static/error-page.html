@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Página de erro do ZeroMonos. Ocorreu um problema ao processar sua solicitação.">
+  <title>Erro - ZeroMonos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/zeromonos-base.css">
+  <link rel="stylesheet" href="/css/zeromonos-error.css">
+</head>
+
+<body>
+  <div class="container">
+    <main class="error-page">
+      <div class="error-container">
+        <div class="error-icon-wrapper">
+          <div class="error-icon">⚠️</div>
+          <div class="error-pulse"></div>
+        </div>
+
+        <h1 class="error-title">Ops! Ocorreu um erro</h1>
+        <p class="error-subtitle">Não foi possível processar sua solicitação</p>
+
+        <div class="error-message" role="alert">
+          <div class="error-message-icon">ℹ️</div>
+          <div class="error-message-content">
+            <p id="error-details" class="error-details">A operação não pôde ser concluída. Por favor, tente novamente.
+            </p>
+            <p class="error-suggestion">Se o problema persistir, entre em contato com o suporte.</p>
+          </div>
+        </div>
+
+        <div class="error-actions">
+          <a href="/" class="btn btn-primary btn-home">
+            <span>🏠</span>
+            <span>Voltar ao Início</span>
+          </a>
+          <button onclick="window.history.back()" class="btn btn-secondary btn-back">
+            <span>←</span>
+            <span>Voltar</span>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/zeromonos-error.js"></script>
+</body>
+
+</html>

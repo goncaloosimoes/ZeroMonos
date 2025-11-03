@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Painel Staff do ZeroMonos. Gerencie e atualize agendamentos de recolha de resíduos volumosos.">
+  <title>Painel Staff - Gestão de Agendamentos - ZeroMonos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/zeromonos-base.css">
+  <link rel="stylesheet" href="/css/zeromonos-staff.css">
+</head>
+
+<body>
+  <div class="container">
+    <header class="page-header">
+      <div class="header-content">
+        <div class="header-icon">⚙️</div>
+        <div class="header-text">
+          <h1 class="page-title">Painel Staff</h1>
+          <p class="page-subtitle">Gestão de agendamentos de recolha de resíduos</p>
+        </div>
+      </div>
+      <a href="/" class="btn btn-secondary btn-back">
+        <span>←</span>
+        <span>Voltar</span>
+      </a>
+    </header>
+
+    <main class="staff-container">
+      <section class="filters-section">
+        <div class="filters-card">
+          <h2 class="filters-title">Filtros de Busca</h2>
+          <form id="filters-form" class="filters-form">
+            <div class="filter-group">
+              <label for="municipality-filter">
+                <span>Filtrar por Município</span>
+              </label>
+              <select id="municipality-filter" name="municipality" aria-describedby="filter-help">
+                <option value="">Todos os municípios</option>
+                <option value="" disabled>Carregando...</option>
+              </select>
+              <small id="filter-help" class="field-help">Selecione um município para filtrar os agendamentos</small>
+            </div>
+            <div class="filter-actions">
+              <button type="submit" id="filter-btn" class="btn btn-primary btn-filter">
+                <span>🔎</span>
+                <span>Aplicar Filtro</span>
+              </button>
+              <button type="button" id="reset-btn" class="btn btn-secondary btn-reset">
+                <span>↻</span>
+                <span>Limpar Filtros</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="list-section" class="list-section">
+        <div class="section-header">
+          <h2 class="section-title">Lista de Agendamentos</h2>
+          <div class="section-info" id="section-info">
+            <span class="info-text">Total de agendamentos: <strong id="total-count">-</strong></span>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="table" role="table" aria-label="Lista de Agendamentos">
+            <thead>
+              <tr>
+                <th scope="col">Token</th>
+                <th scope="col">Município</th>
+                <th scope="col">Data</th>
+                <th scope="col">Horário</th>
+                <th scope="col">Status</th>
+                <th scope="col">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="bookings-tbody">
+              <tr>
+                <td colspan="6" class="loading-state">
+                  <div class="loading-content">
+                    <span class="loading-icon">⏳</span>
+                    <span>Carregando agendamentos...</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">📭</div>
+          <h3 class="empty-title">Nenhum agendamento encontrado</h3>
+          <p class="empty-description">Não há agendamentos disponíveis para os filtros selecionados.</p>
+        </div>
+      </section>
+
+      <div id="msg" class="message-container" role="alert" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <!-- Modal de Histórico -->
+  <div id="history-modal" class="modal hidden">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Histórico de Transições de Estado</h3>
+        <button class="modal-close" id="modal-close" aria-label="Fechar modal">
+          <span>✕</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="history-list" id="history-list">
+          <!-- O histórico será inserido aqui -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/zeromonos-staff.js"></script>
+</body>
+
+</html>
