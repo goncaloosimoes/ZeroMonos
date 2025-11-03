@@ -194,6 +194,8 @@ open target/site/jacoco/index.html
 
 ![SonarQube Report](docs/sonarqube_report.png)
 
+![SonarQube Report](docs/sonarqube_risk_data.png)
+
 ```bash
 # Gerar relatório de cobertura
 mvn clean test jacoco:report
