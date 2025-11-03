@@ -32,7 +32,6 @@
 		<rest-assured.version>5.4.0</rest-assured.version>
 		<cucumber.version>7.18.0</cucumber.version>
 		<sonar.organization>goncaloosimoes</sonar.organization>
-		<!-- <sonar.projectKey>goncaloosimoes_ZeroMonos</sonar.projectKey> -->
 	</properties>
 	<dependencies>
 
