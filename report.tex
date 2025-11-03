@@ -1,0 +1,579 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{float}
+
+% Page setup
+\geometry{margin=2.5cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{TQS HW | 1}
+\fancyhead[R]{\thepage}
+\fancyfoot[C]{ZeroMonos - Bulk Waste Collection System}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    language=Java
+}
+
+% Title formatting
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+% Document
+\begin{document}
+
+% Title Page
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\Huge\bfseries ZeroMonos}\\[0.5cm]
+    {\Large Bulk Waste Collection Scheduling System}\\[1cm]
+    {\large TQS - Software Testing and Quality}\\[0.5cm]
+    {\large Midterm Assignment - Project Report}\\[2cm]
+    \vfill
+    \today
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+% Section 1: Introduction
+\section{Introduction}
+
+\subsection{Application Use Case}
+
+\subsubsection{Product Name}
+\textbf{ZeroMonos} - Bulk Waste Collection Scheduling System
+
+\subsubsection{General Purpose}
+
+ZeroMonos is a web application designed for scheduling and managing bulk waste collections in Portuguese municipalities. The system serves as a bridge between citizens who need to dispose of large items (furniture, appliances, mattresses) and municipal waste management services.
+
+The application provides two main user interfaces:
+\begin{itemize}
+    \item \textbf{Citizen Interface}: Allows residents to schedule, query, and cancel bulk waste collection appointments
+    \item \textbf{Staff Interface}: Enables municipal staff to view, filter, and manage booking statuses
+\end{itemize}
+
+The system supports all 308 Portuguese municipalities and enforces business rules such as date validation (no past dates, today, or Sundays), daily booking limits per municipality (32 bookings maximum), and maintains a complete audit trail of status changes.
+
+This project was developed as part of the Software Testing and Quality course to demonstrate testing practices, code quality assurance, and software engineering best practices.
+
+\subsection{Project Context}
+
+The ZeroMonos system was developed as a midterm assignment for the Software Testing and Quality (TQS) course, focusing on demonstrating comprehensive software engineering practices including testing methodologies, code quality tools, and CI/CD integration.
+
+\subsection{Use of Generative AI}
+
+Generative AI tools were used throughout the development process to assist with code development, testing, refactoring, and quality improvements. The front-end application was heavily produced with Generative AI to speed up the styling of the HTML pages. All generated code was reviewed before being integrated into the project.
+
+% Section 2: Overview of the work
+\section{Overview of the work}
+
+\subsection{Current implementation (faults \& extras)}
+
+\subsubsection{Known Limitations}
+
+The following features are missing or have known limitations that would be expected in a production-ready system:
+
+\textbf{Database Persistence}
+\begin{itemize}
+    \item The application uses H2 in-memory database, which means all data is lost when the application restarts
+    \item No persistent storage layer configured for production use
+    \item \textbf{Expected}: Integration with PostgreSQL or MySQL for production deployment
+\end{itemize}
+
+\textbf{Authentication and Authorization}
+\begin{itemize}
+    \item No authentication system implemented
+    \item No user accounts or role-based access control
+    \item Staff panel is accessible without any authentication mechanism
+    \item \textbf{Expected}: Secure authentication system (JWT, OAuth2, or Spring Security) for staff endpoints
+\end{itemize}
+
+\textbf{API Pagination}
+\begin{itemize}
+    \item Staff endpoint \texttt{/api/staff/bookings} returns all bookings without pagination
+    \item This can cause performance issues with large datasets
+    \item \textbf{Expected}: Pagination parameters (page, size) for efficient data retrieval
+\end{itemize}
+
+\textbf{Frontend Limitations}
+\begin{itemize}
+    \item Frontend is built with vanilla HTML/CSS/JavaScript (no modern framework)
+    \item Basic error handling in the user interface
+    \item \textbf{Expected}: Modern frontend framework (React, Vue.js, or Angular) and improved user experience
+\end{itemize}
+
+\textbf{Missing Features (could be implemented if this project kept going)}
+\begin{itemize}
+    \item No email notifications for booking status changes
+    \item No SMS notifications
+    \item No ability to edit bookings after creation (change time slot or description for example)
+    \item No export functionality (CSV, PDF reports)
+\end{itemize}
+
+\subsubsection{Extra Features Implemented}
+
+The following additional features were implemented beyond the basic requirements:
+
+\textbf{CORS Configuration}
+\begin{itemize}
+    \item Centralized CORS configuration via \texttt{CorsConfig} class
+    \item Whitelist-based approach (not using wildcard \texttt{*})
+    \item Configurable allowed origins through \texttt{application.properties}
+    \item More secure than permissive \texttt{@CrossOrigin(origins = "*")} annotation
+\end{itemize}
+
+\textbf{History Tracking}
+\begin{itemize}
+    \item Complete history of booking status changes tracked in \texttt{StateChange} entity
+    \item All state transitions are recorded with timestamps
+    \item History is visible in API responses and staff panel interface
+    \item Provides full audit trail for booking lifecycle
+\end{itemize}
+
+\textbf{API Documentation}
+\begin{itemize}
+    \item SpringDoc OpenAPI integration for automatic API documentation
+    \item Interactive Swagger UI available at \texttt{/swagger-ui.html}
+    \item Automatic API documentation generation from code annotations
+    \item Complete documentation of all REST endpoints
+\end{itemize}
+
+\subsection{Product specification}
+
+\subsubsection{Functional scope and supported interactions}
+
+\textbf{Citizen Functionality}
+\begin{itemize}
+    \item \textbf{Create Booking}: Schedule bulk waste collection by selecting municipality, date, time slot, and providing description
+    \item \textbf{Query Booking}: Look up existing booking by token to view status and details
+    \item \textbf{Cancel Booking}: Cancel a booking if it's in a cancellable state (RECEIVED or ASSIGNED)
+    \item \textbf{List Municipalities}: Get list of all available municipalities (308 Portuguese municipalities)
+\end{itemize}
+
+\textbf{Staff Functionality}
+\begin{itemize}
+    \item \textbf{List All Bookings}: View all bookings in the system with filtering capabilities
+    \item \textbf{Filter by Municipality}: Filter bookings by specific municipality
+    \item \textbf{Update Booking Status}: Change booking status through state transitions (RECEIVED → ASSIGNED → IN PROGRESS → COMPLETED → CANCELLED) although staff can jump through status if needed
+    \item \textbf{View Booking History}: Access complete history of status changes for any booking
+\end{itemize}
+
+\textbf{Business Rules}
+\begin{itemize}
+    \item Date validation: No past dates, today, or Sundays allowed
+    \item Daily limit: Maximum 32 bookings per municipality per day
+    \item Status transitions: Staff can update statuses following business logic
+    \item Cancellation: Only bookings in RECEIVED or ASSIGNED states can be cancelled
+    \item History tracking: All status changes are recorded with timestamps
+\end{itemize}
+
+\subsubsection{System implementation architecture}
+
+The application follows a layered architecture pattern with clear separation of concerns:
+
+\textbf{1. Boundary Layer (Controllers)}
+\begin{itemize}
+    \item \texttt{BookingController} - Public API (\texttt{/api/bookings})
+    \begin{itemize}
+        \item POST \texttt{/api/bookings} - Create new booking
+        \item GET \texttt{/api/bookings/\{token\}} - Get booking by token
+        \item PUT \texttt{/api/bookings/\{token\}/cancel} - Cancel booking
+        \item GET \texttt{/api/bookings/municipalities} - List all municipalities
+    \end{itemize}
+    \item \texttt{StaffBookingController} - Administrative API (\texttt{/api/staff/bookings})
+    \begin{itemize}
+        \item GET \texttt{/api/staff/bookings} - List all bookings (with optional filters)
+        \item PATCH \texttt{/api/staff/bookings/\{token\}/status} - Update booking status
+    \end{itemize}
+    \item \texttt{RestExceptionHandler} - Global exception handling with structured error responses
+\end{itemize}
+
+\textbf{2. Service Layer}
+\begin{itemize}
+    \item \texttt{BookingServiceImplementation} - Core business logic
+    \begin{itemize}
+        \item Date validation using \texttt{DateValidator}
+        \item Booking limit enforcement (32 per municipality)
+        \item Status change tracking via \texttt{StateChange}
+        \item DTO conversion with error handling
+    \end{itemize}
+    \item \texttt{MunicipalityImportService} - Municipality data import from external API
+\end{itemize}
+
+\textbf{3. Data Layer}
+\begin{itemize}
+    \item Entities: \texttt{Booking}, \texttt{Municipality}, \texttt{StateChange}
+    \item Repositories: \texttt{BookingRepository}, \texttt{MunicipalityRepository}
+    \item Relationships:
+    \begin{itemize}
+        \item \texttt{Municipality} → \texttt{Booking} (1:N)
+        \item \texttt{Booking} → \texttt{StateChange} (1:N) with cascade and orphan removal
+    \end{itemize}
+\end{itemize}
+
+\textbf{4. DTO Layer}
+\begin{itemize}
+    \item \texttt{BookingRequestDTO} - Input validation for booking creation
+    \item \texttt{BookingResponseDTO} - Output formatting with history
+\end{itemize}
+
+\textbf{Technology Stack}
+\begin{itemize}
+    \item \textbf{Backend}: Java 21, Spring Boot 3.5.7, Spring Data JPA
+    \item \textbf{Database}: H2 (in-memory), JPA/Hibernate
+    \item \textbf{Frontend}: HTML5, CSS3, JavaScript (ES6+)
+    \item \textbf{Build}: Maven
+    \item \textbf{Documentation}: SpringDoc OpenAPI (Swagger UI)
+\end{itemize}
+
+\subsubsection{API for developers}
+
+The application provides a RESTful API with comprehensive documentation:
+
+\textbf{API Documentation}
+\begin{itemize}
+    \item Interactive Swagger UI available at \texttt{/swagger-ui.html}
+    \item OpenAPI JSON specification at \texttt{/v3/api-docs}
+    \item Automatic documentation generation from code annotations
+    \item Complete endpoint descriptions, request/response schemas, and examples
+\end{itemize}
+
+\textbf{API Endpoints}
+
+\textit{Public Endpoints (\texttt{/api/bookings})}:
+\begin{itemize}
+    \item POST \texttt{/api/bookings} - Create new booking
+    \item GET \texttt{/api/bookings/\{token\}} - Get booking details by token
+    \item PUT \texttt{/api/bookings/\{token\}/cancel} - Cancel booking
+    \item GET \texttt{/api/bookings/municipalities} - List all municipalities
+\end{itemize}
+
+\textit{Staff Endpoints (\texttt{/api/staff/bookings})}:
+\begin{itemize}
+    \item GET \texttt{/api/staff/bookings} - List all bookings (supports municipality filter)
+    \item PATCH \texttt{/api/staff/bookings/\{token\}/status} - Update booking status
+\end{itemize}
+
+\textbf{Error Handling}
+\begin{itemize}
+    \item Structured error responses with HTTP status codes
+    \item Consistent error format: \texttt{\{timestamp, status, error, message, path\}}
+    \item Custom exceptions for better error categorization
+    \item Global exception handler for consistent error responses
+\end{itemize}
+
+% Section 3: Quality assurance
+\section{Quality assurance}
+
+\subsection{Overall strategy for testing}
+
+The project follows a \textbf{testing pyramid} approach with multiple levels of testing to ensure comprehensive coverage:
+
+\begin{enumerate}
+    \item \textbf{Unit Tests} (Base of pyramid) - Largest number of tests, fast execution, high isolation
+    \item \textbf{Integration Tests} (Middle layer) - API-level testing, moderate execution time
+    \item \textbf{Acceptance Tests} (Top layer) - BDD scenarios (Cucumber) and E2E tests (Selenium), slower execution
+\end{enumerate}
+
+\textbf{Testing Principles}
+\begin{itemize}
+    \item \textbf{Isolation}: Unit tests use mocks and stubs to isolate components
+    \item \textbf{Coverage}: Aim for high code coverage (80\%+ for new code)
+    \item \textbf{Maintainability}: Tests are well-structured and easy to maintain
+    \item \textbf{Speed}: Fast-feedback loop with quick unit tests
+\end{itemize}
+
+\textbf{Test Distribution}
+\begin{itemize}
+    \item \textbf{Unit Tests}: Tests covering services, controllers, repositories, and utilities
+    \item \textbf{Integration Tests}: API tests with RestAssured
+    \item \textbf{BDD Tests}: Cucumber scenarios
+    \item \textbf{E2E Tests}: Selenium tests for both client and staff interfaces
+\end{itemize}
+
+\subsection{Unit and integration testing}
+
+\subsubsection{Unit Tests}
+
+Isolated tests using mocks and stubs:
+
+\textbf{Service Layer Testing}
+\begin{itemize}
+    \item \texttt{BookingServiceImplementationTest}
+    \begin{itemize}
+        \item Tests for booking creation with various validation scenarios
+        \item Tests for booking retrieval, cancellation, and status updates
+        \item Tests for exception handling and error scenarios
+        \item Tests for DTO conversion and edge cases
+        \item Custom exception constructor testing
+    \end{itemize}
+    \item \texttt{BookingControllerTest} - MockMvc testing for the user endpoints
+    \item \texttt{StaffBookingControllerTest} - Staff endpoints testing
+    \item \texttt{RestExceptionHandlerTest} - Exception handling testing
+\end{itemize}
+
+\textbf{Repository Layer Testing}
+\begin{itemize}
+    \item \texttt{BookingRepositoryTest} - @DataJpaTest with TestEntityManager
+    \item \texttt{MunicipalityRepositoryTest} - Municipality data access testing
+\end{itemize}
+
+\textbf{Utility Testing}
+\begin{itemize}
+    \item \texttt{TestDate} - Date validation utilities
+    \item \texttt{DateValidator} - Date validation logic
+    \item \texttt{HistoryMapper} - History mapping utilities
+\end{itemize}
+
+\textbf{Exception Testing}
+\begin{itemize}
+    \item Custom exception constructors tested:
+    \begin{itemize}
+        \item \texttt{SpringDocException} - All constructors tested
+        \item \texttt{DtoConversionException} - All constructors tested
+        \item \texttt{BookingServiceException} - All constructors tested
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Integration Tests}
+
+API-level testing with RestAssured:
+
+\textbf{API Tests}
+\begin{itemize}
+    \item \texttt{BookingApiTest}
+    \begin{itemize}
+        \item Full API workflow testing
+        \item Endpoint functionality verification
+        \item Request/response validation
+        \item Error handling verification
+    \end{itemize}
+    \item \texttt{BookingApiEdgeCasesTest}
+    \begin{itemize}
+        \item Edge cases and boundary conditions
+        \item Concurrent request handling
+        \item Invalid input scenarios
+        \item Error code verification
+    \end{itemize}
+    \item \texttt{MunicipalityApiLoadTest}
+    \begin{itemize}
+        \item Verification of 308 municipalities loaded from external API
+        \item API endpoint verification
+        \item Repository consistency checks
+    \end{itemize}
+\end{itemize}
+
+\textbf{Test Configuration}
+\begin{itemize}
+    \item Testcontainers for database isolation
+    \item Spring Boot test context with random port
+    \item RestAssured for HTTP testing
+    \item Awaitility for asynchronous testing
+\end{itemize}
+
+\subsection{Acceptance testing}
+
+Acceptance testing is performed using Behavior-Driven Development (BDD) with Cucumber:
+
+\textbf{BDD Scenarios}
+
+\textit{Booking Feature (\texttt{booking.feature})}:
+\begin{itemize}
+    \item Create booking with valid data
+    \item Create booking with non-existent municipality
+    \item Create booking with past date
+    \item Create booking for Sunday
+    \item Query existing booking
+    \item Query non-existent booking
+    \item Cancel valid booking
+    \item Cancel already cancelled booking
+    \item Complete booking workflow
+\end{itemize}
+
+\textit{Staff Feature (\texttt{staff.feature})}:
+\begin{itemize}
+    \item List all bookings
+    \item Filter bookings by municipality
+    \item Filter by non-existent municipality
+    \item Update status to ASSIGNED
+    \item Update status to IN\_PROGRESS
+    \item Update status to COMPLETED
+    \item Update status of non-existent booking
+    \item Complete staff workflow
+\end{itemize}
+
+\textbf{End-to-End Testing}
+
+Selenium WebDriver tests for UI functionality:
+
+\textit{Client View (\texttt{ClientViewSeleniumTest})}:
+\begin{itemize}
+    \item Form loading and municipality autocomplete
+    \item Form submission with valid data
+    \item Form validation for required fields
+    \item Booking lookup by token
+    \item Invalid token handling
+    \item Booking cancellation from lookup page
+\end{itemize}
+
+\textit{Staff View (\texttt{StaffViewSeleniumTest})}:
+\begin{itemize}
+    \item Booking table loading
+    \item Municipality filtering
+    \item Filter clearing
+    \item Status updates
+    \item History viewing
+    \item Empty state handling
+\end{itemize}
+
+\textbf{Testing Approach}
+\begin{itemize}
+    \item Explicit waits using \texttt{WebDriverWait} instead of \texttt{Thread.sleep()} to avoid issues on SonarQube
+    \item Robust element waiting with \texttt{ExpectedConditions}
+    \item Modern Selenium API usage (\texttt{getDomProperty}, \texttt{getDomAttribute})
+    \item Asynchronous testing with Awaitility
+\end{itemize}
+
+\subsection{Non-functional testing}
+
+Non-functional testing covers aspects beyond functional correctness:
+
+\textbf{Performance Testing}
+\begin{itemize}
+    \item Concurrent request handling (\texttt{BookingApiEdgeCasesTest})
+    \item Multiple simultaneous bookings for same municipality
+    \item Load testing with concurrent threads
+    \item Response time verification
+\end{itemize}
+
+\textbf{Reliability Testing}
+\begin{itemize}
+    \item Error handling and recovery
+    \item Exception propagation testing
+    \item Database connection handling
+    \item External API integration resilience
+\end{itemize}
+
+\textbf{Usability Testing}
+\begin{itemize}
+    \item Selenium tests verify UI functionality
+    \item Form validation feedback
+    \item Error message clarity
+    \item User interaction flows
+\end{itemize}
+
+\textbf{Security Considerations}
+\begin{itemize}
+    \item CORS configuration testing
+    \item Input validation testing
+    \item SQL injection prevention (via JPA)
+    \item XSS prevention in frontend
+\end{itemize}
+
+\subsection{Code quality analysis}
+
+Code quality is ensured through multiple tools and practices:
+
+\textbf{SonarQube/SonarCloud Analysis}
+\begin{itemize}
+    \item \textbf{Code Coverage}: 80\%+ for new code
+    \item \textbf{Code Smells}: All identified issues resolved
+    \item \textbf{Bugs}: No bugs detected
+    \item \textbf{Vulnerabilities}: No security vulnerabilities found
+    \item \textbf{Technical Debt}: Minimal technical debt
+    \item \textbf{Quality Gate}: Passing all quality gates
+\end{itemize}
+
+\textbf{JaCoCo Coverage Reports}
+\begin{itemize}
+    \item Automatic coverage reports generated on test execution
+    \item HTML reports available at \texttt{target/site/jacoco/index.html}
+    \item Coverage metrics tracked per package and class
+    \item Branch coverage analysis
+    \item Line coverage analysis
+\end{itemize}
+
+\textbf{Quality Improvements}
+\begin{itemize}
+    \item Custom exception classes for better error handling
+    \item Utility classes with private constructors
+    \item Improved logging practices (avoiding duplicate logging)
+    \item Code refactoring for better maintainability
+    \item Almost all SonarQube issues resolved
+\end{itemize}
+
+\textbf{Quality Metrics}
+\begin{itemize}
+    \item \textbf{Coverage on New Code}: 80\%+ (target: 80\%)
+    \item \textbf{Duplications}: 0.0\% (target: ≤3.0\%)
+    \item \textbf{Security Hotspots}: 0 (target: 0)
+    \item \textbf{New Issues}: 0 (target: 0)
+    \item \textbf{Maintainability Rating}: A
+    \item \textbf{Reliability Rating}: A
+    \item \textbf{Security Rating}: A
+\end{itemize}
+
+\text Note: all metrics can be seen in the docs or in the README.md in the project repository.
+
+% Section 4: References & resources
+\section{References \& resources}
+
+\subsection{Technologies and Frameworks}
+\begin{itemize}
+    \item Spring Boot 3.5.7 - \url{https://spring.io/projects/spring-boot}
+    \item Java 21 - \url{https://www.oracle.com/java/}
+    \item JUnit 5 - \url{https://junit.org/junit5/}
+    \item RestAssured 5.4.0 - \url{https://rest-assured.io/}
+    \item Cucumber 7.18.0 - \url{https://cucumber.io/}
+    \item Selenium 4.19.1 - \url{https://www.selenium.dev/}
+    \item JaCoCo - \url{https://www.jacoco.org/jacoco/}
+    \item SonarQube/SonarCloud - \url{https://www.sonarqube.org/}
+    \item SpringDoc OpenAPI - \url{https://springdoc.org/}
+    \item Maven - \url{https://maven.apache.org/}
+\end{itemize}
+
+\subsection{Documentation}
+\begin{itemize}
+    \item Spring Boot Documentation - \url{https://docs.spring.io/spring-boot/docs/current/reference/html/}
+    \item Spring Data JPA Documentation - \url{https://docs.spring.io/spring-data/jpa/docs/current/reference/html/}
+    \item REST Assured Documentation - \url{https://rest-assured.io/docs/}
+    \item Cucumber Documentation - \url{https://cucumber.io/docs/cucumber/}
+    \item Selenium Documentation - \url{https://www.selenium.dev/documentation/}
+\end{itemize}
+
+\subsection{Project Resources}
+\begin{itemize}
+    \item GitHub Repository: \url{https://github.com/goncaloosimoes/ZeroMonos}
+    \item SonarCloud Project: \url{https://sonarcloud.io/project/overview?id=goncaloosimoes_ZeroMonos}
+    \item Video Demonstration: \url{https://github.com/goncaloosimoes/ZeroMonos}
+    \item API Documentation: Available at \texttt{/swagger-ui.html} when running locally
+    \item Code Coverage Report: Available at \texttt{target/site/jacoco/index.html} after running tests
+\end{itemize}
+
+\subsection{External APIs}
+\begin{itemize}
+    \item Portuguese Municipalities API: \url{https://json.geoapi.pt/municipios} - Used for loading municipality data
+\end{itemize}
+
+\end{document}
